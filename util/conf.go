@@ -7,9 +7,9 @@ import (
 	"log"
 )
 
-func GetConfig(section string) (map[string]string, error) {
+func GetConfig(confFile, section string) (map[string]string, error) {
 	dir, _ := os.Getwd()
-	confDir := dir + "/conf/key.ini"
+	confDir := dir + "/conf/" + confFile + ".ini"
 	cfg, err := ini.Load(confDir)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("conf load error: %s", err))
