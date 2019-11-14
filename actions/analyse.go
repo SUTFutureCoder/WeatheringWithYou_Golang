@@ -9,7 +9,6 @@ import (
 )
 
 type Analyse struct {
-
 }
 
 func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
@@ -34,6 +33,7 @@ func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
 		analysePointsSum := int(float64((seY - nwY) * (seX - nwX)) / (864 - 109) * 49414144)
 		// 假设前端处理能力为10w点
 		analysePointsSlice := analysePointsSum / 100000
+
 		// 如结果为30，则范围内，每30点聚合一个
 
 		// 估算返回值总量除以聚合量，按照5k返回进行多协程请求
@@ -44,11 +44,15 @@ func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
 		fmt.Println(routineNum)
 		fmt.Println(distance)
 
+		var ch = make(chan model.Points, 100)
+
 		// STEP3
 
 		// STEP4 请求opensearch获取
-		model.AnalysePoints()
+		// 对区块进行分割，进行随机处理
+		go model.AnalysePoints(ch, floatNeLng, floatSwLat, floatSwLng, floatNeLat, 2,2)
 
+		fmt.Println(<- ch)
 		util.Output(ctx, "{\"goodjob\"}")
 	}
 }
