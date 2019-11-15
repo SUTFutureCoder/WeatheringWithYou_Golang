@@ -7,13 +7,15 @@ import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"strconv"
+	"strings"
 )
 type Points struct {
 	Point []Point
 }
 
 type Point struct {
-	Loc string
+	Lng float64
+	Lat float64
 	Elevation int
 }
 
@@ -43,8 +45,12 @@ func AnalysePoints(ch chan Points, minLng, minLat, maxLng, maxLat float64, distC
 	for i := 0; i < len(arr); i++ {
 		if dataMap, ok := (arr[i]).(map[string]interface {}); ok {
 			intElevation, _ := strconv.Atoi(dataMap["elevation"].(string))
+			locStrList := strings.Split(dataMap["loc"].(string), " ")
+			float64Lng, _ := strconv.ParseFloat(locStrList[0], 64)
+			float64Lat, _ := strconv.ParseFloat(locStrList[1], 64)
 			point := Point{
-				Loc:       dataMap["loc"].(string),
+				Lng: float64Lng,
+				Lat: float64Lat,
 				Elevation: intElevation,
 			}
 			analyse.Point = append(analyse.Point, point)
