@@ -5,6 +5,7 @@ import (
 	"WeatheringWithYou_Golang/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"sync"
 )
 
 type Analyse struct {
@@ -22,38 +23,32 @@ func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(reqInfo)
-
-		nwX, nwY := util.Latlng2Tile(reqInfo.NeLat, reqInfo.SwLng, 15)
-		seX, seY := util.Latlng2Tile(reqInfo.SwLat, reqInfo.NeLng, 15)
 
 		// STEP2 计算每块数据量
-		// 东京tile总量为864 - 109，点总量为49,414,144，因为平均分布，可以估算出数据量。
-		analysePointsSum := int(float64((seY - nwY) * (seX - nwX)) / (864 - 109) * 49414144)
-		// 假设前端处理能力为10w点
-		analysePointsSlice := analysePointsSum / 100000
+		// 12:9对区块进行切割 假定前端最多处理5w点，每个各自返回500随机点数据
+		var ch = make(chan []model.Point, 1000)
 
-		// 如结果为30，则范围内，每30点聚合一个
-
-		// 估算返回值总量除以聚合量，按照500返回进行多协程请求
-		routineNum := analysePointsSum / analysePointsSlice / 500
-
-
-		fmt.Println(analysePointsSum)
-		fmt.Println(analysePointsSlice)
-		fmt.Println(routineNum)
-
-		var ch = make(chan []model.Point, 100)
-
-		// STEP3
-
-		// STEP4 请求opensearch获取
+		// STEP3 请求opensearch获取
 		// 对区块进行分割，进行随机处理
-		go model.AnalysePoints(ch, reqInfo.SwLng, reqInfo.SwLat, reqInfo.NeLng, reqInfo.NeLat, 5000,1)
+		lngSlice := (reqInfo.NeLng - reqInfo.SwLng) / 20
+		latSlice := (reqInfo.NeLat - reqInfo.SwLat) / 10
+
+		waitGroup := &sync.WaitGroup{}
+		for currLng := reqInfo.SwLng; currLng < reqInfo.NeLng; currLng += lngSlice {
+			for currLat := reqInfo.SwLat; currLat < reqInfo.NeLat; currLat += latSlice {
+				waitGroup.Add(1)
+				go model.AnalysePoints(waitGroup, ch, currLng, currLat, currLng + lngSlice, currLat + latSlice, 500,1)
+			}
+		}
+		waitGroup.Wait()
+		close(ch)
 
 		var pointsRet model.Points
-		point := <- ch
-		pointsRet.Point = append(pointsRet.Point, point...)
+		for data := range ch{
+			pointsRet.Point = append(pointsRet.Point, data...)
+		}
+
+		fmt.Println(len(pointsRet.Point))
 		util.Output(ctx, pointsRet.Point)
 	}
 }

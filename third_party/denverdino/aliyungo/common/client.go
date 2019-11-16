@@ -460,7 +460,7 @@ func (client *Client) InvokeByAnyMethod(method, action, path string, args interf
 	)
 	if method == http.MethodGet {
 		requestURL := client.endpoint + path + "?" + data.Encode()
-		fmt.Println(requestURL)
+		//fmt.Println(requestURL)
 		httpReq, err = http.NewRequest(method, requestURL, nil)
 	} else {
 		//fmt.Println(client.endpoint + path)

@@ -8,6 +8,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"strconv"
 	"strings"
+	"sync"
 )
 type Points struct {
 	Point []Point
@@ -19,9 +20,14 @@ type Point struct {
 	Elevation int
 }
 
-func AnalysePoints(ch chan []Point, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
-	keyConf, _ := util.GetConfig("key", "opensearch")
-	client := opensearch.NewClient(constant.OpenSearchNetworkType ,constant.OpenSearchReigon, keyConf["accessKeyId"], keyConf["accessKeySecret"])
+var KeyConf map[string]string
+
+func AnalysePoints(waitGroup *sync.WaitGroup, ch chan []Point, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
+	defer waitGroup.Done()
+	if KeyConf == nil {
+		KeyConf, _ = util.GetConfig("key", "opensearch")
+	}
+	client := opensearch.NewClient(constant.OpenSearchNetworkType ,constant.OpenSearchReigon, KeyConf["accessKeyId"], KeyConf["accessKeySecret"])
 	query := "query=loc:'rectangle(%f %f,%f %f)'&&distinct=dist_key:groupid,dist_count:%d,dist_times:%d,reserved:false&&config=start:0,hit:500"
 	searchArgs := opensearch.SearchArgs{
 		Query: fmt.Sprintf(query, minLng, minLat, maxLng, maxLat, distCount, distTimes),
@@ -32,14 +38,14 @@ func AnalysePoints(ch chan []Point, minLng, minLat, maxLng, maxLat float64, dist
 	var	analyse []Point
 	js, err := simplejson.NewJson(resp)
 	if err != nil {
-		fmt.Println(err)
 		ch <- analyse
+		return
 	}
 
 	status, _ := js.Get("status").String()
 	if status != "OK" {
-		fmt.Println(err)
 		ch <- analyse
+		return
 	}
 
 	arr, _ := js.Get("result").Get("items").Array()
@@ -57,6 +63,6 @@ func AnalysePoints(ch chan []Point, minLng, minLat, maxLng, maxLat float64, dist
 			analyse = append(analyse, point)
 		}
 	}
-
 	ch <- analyse
+	return
 }
