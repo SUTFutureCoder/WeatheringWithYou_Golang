@@ -19,22 +19,23 @@ type Point struct {
 	Elevation int
 }
 
-func AnalysePoints(ch chan Points, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
+func AnalysePoints(ch chan []Point, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
 	keyConf, _ := util.GetConfig("key", "opensearch")
 	client := opensearch.NewClient(constant.OpenSearchNetworkType ,constant.OpenSearchReigon, keyConf["accessKeyId"], keyConf["accessKeySecret"])
-	query := "query=loc:'rectangle(%f %f,%f %f)'&&distinct=dist_key:groupid,dist_count:%d,dist_times:%d,reserved:false"
+	query := "query=loc:'rectangle(%f %f,%f %f)'&&distinct=dist_key:groupid,dist_count:%d,dist_times:%d,reserved:false&&config=start:0,hit:500"
 	searchArgs := opensearch.SearchArgs{
 		Query: fmt.Sprintf(query, minLng, minLat, maxLng, maxLat, distCount, distTimes),
 		Index_name: constant.OpenSearchAppId,
 	}
-	resp, _ := client.Search(searchArgs)
+	resp, err := client.Search(searchArgs)
 
-	analyse := Points{Point:nil}
+	var	analyse []Point
 	js, err := simplejson.NewJson(resp)
 	if err != nil {
 		fmt.Println(err)
 		ch <- analyse
 	}
+
 	status, _ := js.Get("status").String()
 	if status != "OK" {
 		fmt.Println(err)
@@ -53,7 +54,7 @@ func AnalysePoints(ch chan Points, minLng, minLat, maxLng, maxLat float64, distC
 				Lat: float64Lat,
 				Elevation: intElevation,
 			}
-			analyse.Point = append(analyse.Point, point)
+			analyse = append(analyse, point)
 		}
 	}
 
