@@ -15,7 +15,9 @@ func setupRouter() *gin.Engine {
 	r.Use(util.CORSMiddleware())
 
 	analyse := new(actions.Analyse)
+	drain := new(actions.Drain)
 	r.POST("/analyse", analyse.AnalysePoint())
+	r.POST("/getdrain", drain.GetDrain())
 
 	return r
 }

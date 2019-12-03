@@ -17,8 +17,8 @@ type Analyse struct {
 	HSlice float64 `json:"hslice"`
 }
 
-func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
-	return func(ctx *gin.Context) {
+	func (o *Analyse) AnalysePoint() (func(ctx *gin.Context)) {
+		return func(ctx *gin.Context) {
 		// STEP1 对输入值获取tile
 		var reqInfo Analyse
 		err := ctx.BindJSON(&reqInfo)

@@ -20,6 +20,13 @@ type Point struct {
 	Elevation int
 }
 
+type Drain struct {
+	Lng float64
+	Lat float64
+	Total float64
+	Name string
+}
+
 var KeyConf map[string]string
 
 func AnalysePoints(waitGroup *sync.WaitGroup, ch chan []Point, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
@@ -65,4 +72,19 @@ func AnalysePoints(waitGroup *sync.WaitGroup, ch chan []Point, minLng, minLat, m
 	}
 	ch <- analyse
 	return
+}
+
+func GetDrainData() () {
+	if KeyConf == nil {
+		KeyConf, _ = util.GetConfig("key", "opensearch")
+	}
+	client := opensearch.NewClient(constant.OpenSearchNetworkType ,constant.OpenSearchReigon, KeyConf["accessKeyId"], KeyConf["accessKeySecret"])
+	query := "query=loc:'circle(139.616547 35.506372,1000000)'&&config=start:0,hit:500"
+	searchArgs := opensearch.SearchArgs{
+		Query: query,
+		Index_name: constant.OpenSearchDrainAppId,
+	}
+	resp, _ := client.Search(searchArgs)
+	fmt.Println(string(resp))
+
 }
