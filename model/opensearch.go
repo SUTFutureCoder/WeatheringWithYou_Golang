@@ -74,7 +74,7 @@ func AnalysePoints(waitGroup *sync.WaitGroup, ch chan []Point, minLng, minLat, m
 	return
 }
 
-func GetDrainData() () {
+func GetDrainData() []Drain {
 	if KeyConf == nil {
 		KeyConf, _ = util.GetConfig("key", "opensearch")
 	}
@@ -85,6 +85,30 @@ func GetDrainData() () {
 		Index_name: constant.OpenSearchDrainAppId,
 	}
 	resp, _ := client.Search(searchArgs)
-	fmt.Println(string(resp))
+
+	js, err := simplejson.NewJson(resp)
+	if err != nil {
+		return nil
+	}
+
+	var drain []Drain
+
+	arr, _ := js.Get("result").Get("items").Array()
+	for i := 0; i < len(arr); i++ {
+		if dataMap, ok := (arr[i]).(map[string]interface{}); ok {
+			locStrList := strings.Split(dataMap["loc"].(string), " ")
+			float64Lng, _ := strconv.ParseFloat(locStrList[0], 64)
+			float64Lat, _ := strconv.ParseFloat(locStrList[1], 64)
+			total, _ := strconv.ParseFloat(dataMap["total"].(string), 64)
+			point := Drain {
+				Lng: float64Lng,
+				Lat: float64Lat,
+				Name: dataMap["name"].(string),
+				Total: total,
+			}
+			drain = append(drain, point)
+		}
+	}
+	return drain
 
 }
