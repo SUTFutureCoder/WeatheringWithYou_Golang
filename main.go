@@ -18,6 +18,7 @@ func setupRouter() *gin.Engine {
 	drain := new(actions.Drain)
 	r.POST("/analyse", analyse.AnalysePoint())
 	r.POST("/getdrain", drain.GetDrain())
+	r.POST("/analysedrain", drain.AnalyseDrain())
 
 	return r
 }

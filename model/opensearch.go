@@ -27,6 +27,11 @@ type Drain struct {
 	Name string
 }
 
+type DrainElevation struct {
+	DrainPoint Drain
+	Elevation int
+}
+
 var KeyConf map[string]string
 
 func AnalysePoints(waitGroup *sync.WaitGroup, ch chan []Point, minLng, minLat, maxLng, maxLat float64, distCount, distTimes int) {
@@ -111,4 +116,45 @@ func GetDrainData() []Drain {
 	}
 	return drain
 
+}
+
+func GetDrainElevation(waitGroup *sync.WaitGroup, drain Drain, ch chan DrainElevation) {
+	defer waitGroup.Done()
+	if KeyConf == nil {
+		KeyConf, _ = util.GetConfig("key", "opensearch")
+	}
+	client := opensearch.NewClient(constant.OpenSearchNetworkType ,constant.OpenSearchReigon, KeyConf["accessKeyId"], KeyConf["accessKeySecret"])
+	query := "query=loc:'circle(%f %f,10)'&&config=start:0,hit:1"
+	searchArgs := opensearch.SearchArgs{
+		Query: fmt.Sprintf(query, drain.Lng, drain.Lat),
+		Index_name: constant.OpenSearchAppId,
+	}
+	resp, _ := client.Search(searchArgs)
+
+	js, err := simplejson.NewJson(resp)
+
+	var drainElevation DrainElevation
+	drainElevation.DrainPoint = drain
+	fmt.Println(js)
+	if err != nil {
+		ch <- drainElevation
+		return
+	}
+
+	status, _ := js.Get("status").String()
+	if status != "OK" {
+		ch <- drainElevation
+		return
+	}
+
+	arr, _ := js.Get("result").Get("items").Array()
+	for i := 0; i < len(arr); i++ {
+		if dataMap, ok := (arr[i]).(map[string]interface {}); ok {
+			intElevation, _ := strconv.Atoi(dataMap["elevation"].(string))
+			drainElevation.Elevation = intElevation
+		}
+	}
+
+	ch <- drainElevation
+	return
 }
